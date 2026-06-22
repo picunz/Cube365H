@@ -1,0 +1,296 @@
+#include "wifiControl.h"
+
+//#include <Arduino.h>
+#include <WiFi.h>
+
+#include <AsyncTCP.h>
+
+//#define TEMPLATE_PLACEHOLDER '~'
+#include <ESPAsyncWebServer.h>
+ 
+
+#include "prefs.h"
+
+#include "webpage_net.h"
+#include "webpage_faces.h"
+
+#include "webapi.h"
+
+#include "config.h"
+
+String NetworkArray[8]; 
+int numberOfNetworkFound;
+
+String webAPIUrl;
+
+int serverPort;
+AsyncWebServer server(SERVER_PORT);
+
+
+AsyncWebSocket ws("/ws");
+ 
+
+
+//const char *PARAM_1 = "SSID";
+const char *PARAM_1 = "NET";
+const char *PARAM_2 = "Password";
+//const char *PARAM_3 = "Net";
+
+//const String inputParam1 = "SSID";
+const String inputParam1 = "NET";
+const String inputParam2 = "Password";
+
+String inputNetworkName;
+String inputNetworkPwd;
+//String inputNetworkName2;
+
+
+// configurations
+String inputUrl;
+const char *PARAM_URL = "Url";
+ 
+
+int WiFi_scanner()
+{
+   Serial.println("scan start");
+
+   WiFi.mode(WIFI_STA);
+   WiFi.disconnect(); // Disconnetti da eventuali reti precedenti
+
+   // WiFi.scanNetworks will return the number of networks found
+   int n = WiFi.scanNetworks();
+   Serial.println("scan done");
+   if (n == 0)
+   {
+      Serial.println("no networks found");
+   }
+   else
+   {
+      Serial.print(n);
+      Serial.println(" networks found");
+      for (int i = 0; i < n; ++i)
+      {
+         // Print SSID and RSSI for each network found
+         Serial.print(i + 1);
+         Serial.print(": ");
+         Serial.print(WiFi.SSID(i));
+         Serial.print(" (");
+         Serial.print(WiFi.RSSI(i));
+         Serial.print(")");
+         Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? " " : "*");
+         delay(10);
+
+         if (i < 8) {
+            NetworkArray[i] = WiFi.SSID(i);
+         }
+
+      }
+   }
+   return n;
+}
+
+
+String processor(const String& var) 
+{
+   if (var == "WIFI_LIST") {
+
+        String wifiList = "";
+      
+        int n = numberOfNetworkFound;
+        //n=2;
+        if (n > 8) {
+            n=8;
+        }
+
+        for (int i = 0; i < n; ++i) {
+            wifiList += "<option value='" + NetworkArray[i] + "'>" + NetworkArray[i] + "</option>";
+        }
+
+        return wifiList; 
+   }
+   else if(var == "CUR_URL") {
+
+        ServerUrl = prefGetUrl();
+        return ServerUrl;
+   }
+   return String(); 
+}
+
+void notFound(AsyncWebServerRequest *request)
+{
+   request->send(404, "text/plain", "Not found");
+}
+
+void WiFi_accessPointSetup(String ssid, String pwd)
+{
+
+    WiFi.disconnect();
+    WiFi.mode(WIFI_AP);
+   
+    IPAddress local_IP(192, 168, 4, 1);
+
+    IPAddress gateway(192, 168, 4, 1);
+    IPAddress subnet(255, 255, 255, 0);
+
+    //WiFi.enableIpV6(false);
+    //WiFi.softAPsetHostname("MyCube");
+
+    WiFi.softAPConfig(local_IP, gateway, subnet);
+ 
+
+
+    WiFi.softAP(ssid.c_str(), pwd.c_str());
+    IPAddress IP = WiFi.softAPIP();
+    Serial.print("WF: AP IP address ");
+    Serial.println(IP.toString());
+ 
+ 
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+    {
+        Serial.println("WF: start");
+        request->send_P(200, "text/html", index_selectNetwork, processor); 
+    });
+
+    // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
+    server.on("/getWifi", HTTP_GET, [](AsyncWebServerRequest *request)
+    {
+        Serial.println("WF: init submit");
+
+        if (request->getParam(PARAM_1)->value() != "") 
+        {
+            inputNetworkName = request->getParam(PARAM_1)->value();
+        }
+        else 
+        {
+            inputNetworkName = "none";
+        }
+
+        Serial.println("WF: " + inputNetworkName);
+        
+        if (request->getParam(PARAM_2)->value() != "") 
+        {
+            inputNetworkPwd = request->getParam(PARAM_2)->value();
+        }
+        else 
+        {
+            inputNetworkPwd = "none";
+        }
+
+       /*  if (request->getParam(PARAM_3)->value() != "") 
+        {
+            inputNetworkName2 = request->getParam(PARAM_3)->value();
+        }
+        else 
+        {
+            inputNetworkName2 = "none";
+        } */
+
+        
+        
+
+        String newNetwork = inputNetworkName + "," + inputNetworkPwd + "\n";
+
+        Serial.println("WF: " + newNetwork);
+        
+        Serial.println("WF: submit");
+
+        prefSetCredentials(inputNetworkName, inputNetworkPwd);
+
+      
+        server.end();
+
+        // reset
+        ESP.restart();
+
+    });
+
+    server.onNotFound(notFound);
+
+    server.begin();
+
+    Serial.println("WF: server begin");
+}
+
+bool WiFi_connectToAccessPoint(String ssid, String pwd)
+{
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid, pwd);
+
+    // Wait for connection
+    int attempts = 10;
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        delay(800);
+        Serial.print(".");
+        if (attempts-- == 0)
+        {
+            Serial.println("-");
+            return false;
+        }
+    }
+    Serial.println("OK");
+    return true;
+}
+
+String WiFi_startWebServer()
+{
+    server.addHandler(&ws);
+    server.begin();
+    int c = ws.count();   
+
+    String localIp = "";
+    
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+    {
+        Serial.println("WF: server on");
+        
+        request->send_P(200, "text/html", index_page, processor);      
+    });
+
+    server.on("/setUrl", HTTP_GET, [](AsyncWebServerRequest *request)
+    {
+        Serial.println("WF: set url");
+        
+        if (request->hasParam(PARAM_URL))
+        {
+            inputUrl = request->getParam(PARAM_URL)->value();
+            Serial.println("URL: " + inputUrl);
+            
+            prefSetUrl(inputUrl);
+        }
+        else 
+        {
+            Serial.println("WF: url parameter not found!");
+        }
+
+        request->send_P(200, "text/html", index_page, processor);      
+    });
+    
+    server.begin();
+
+    String ipAddress = WiFi.localIP().toString() + ":" + String(SERVER_PORT);
+
+    Serial.println(ipAddress);
+
+    return ipAddress;
+    
+}
+
+String WiFI_getMac()
+{
+    uint8_t mac[6];
+    WiFi.macAddress(mac);
+
+    String macStr = "";
+    for (int i = 0; i < 6; i++) 
+    {
+        if (mac[i] < 0x10) {
+            macStr += "0";
+        }
+        macStr += String(mac[i], HEX);
+    }
+
+    macStr.toUpperCase();
+    return macStr;
+}
+ 
