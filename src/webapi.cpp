@@ -103,7 +103,7 @@ String getActivities(String deviceId)
     return response;
 }
 
-String sendState(String state, String deviceId)
+String sendState(String deviceId, String state)
 {
     HTTPClient http;
 

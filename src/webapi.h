@@ -18,7 +18,7 @@ String getTasks(String deviceId);    // db, not used
 
 String getActivities(String deviceId);    // db
 
-String sendState(String state, String deviceId);    // db
+String sendState(String deviceId, String state);    // db
 
 //void onServerResponse(const String& response);
  
