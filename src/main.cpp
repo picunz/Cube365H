@@ -176,34 +176,11 @@ void lcdDrawFullStats(int i)
 
 void hotSpotMode()
 {
-  Serial.println("No nets saved");
-
-  lcdClearStr(0); 
-  lcdDrawDbg("No nets saved", 0);
-
-  lcdClearStr(1); 
-  lcdDrawDbg("Hotspot mode", 1);
-
-  lcdClearStr(2); 
-  lcdDrawDbg("Scanning networks...", 2);
-  numberOfNetworkFound = WiFi_scanner();
-
-  for(int i = 0; i < 8; i++)
-  {
-      Serial.println(NetworkArray[i]);
-  }
-  
-  lcdClearStr(2);
-  String resultScan = "Found " + String(numberOfNetworkFound) + " networks";
-  lcdDrawDbg(resultScan, 2);
+ 
 
   WiFi_accessPointSetup(AP_SSID, AP_PASSWORD);
 
-  lcdClearStr(2);
-  lcdDrawDbg(String(AP_SSID), 2);
 
-  lcdClearStr(3);
-  lcdDrawDbg(String(AP_PASSWORD), 3);
 
 
   String apUrl = WiFi.softAPIP().toString() + ":" + String(SERVER_PORT);
@@ -211,7 +188,6 @@ void hotSpotMode()
   Serial.println(apUrl);
   lcdClearStr(5);
   lcdDrawDbg(apUrl, 5);
-
 
   while(1);
 }
@@ -281,6 +257,20 @@ void setup()
   bool noNetworkSaved = (creds.ssid.length() == 0);
   if (noNetworkSaved) 
   {
+    Serial.println("No nets saved");
+
+    lcdClearStr(0); 
+    lcdDrawDbg("No nets saved", 0);
+
+    lcdClearStr(1); 
+    lcdDrawDbg("Hotspot mode", 1);
+
+    lcdClearStr(2);
+    lcdDrawDbg(String(AP_SSID), 2);
+
+    lcdClearStr(3);
+    lcdDrawDbg(String(AP_PASSWORD), 3);
+
     hotSpotMode();
   }
   else 
