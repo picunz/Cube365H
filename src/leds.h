@@ -33,7 +33,7 @@ void initLeds();
 
 void setLevel(int nPixel);
 
-void setLevel(int nPixel, uint32_t color);
+void setLevel(int nPixel, uint32_t color, bool clearBefore = true, uint8_t brightness = 255);
 
 //void ledsFace(SensorState s);
 

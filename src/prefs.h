@@ -25,6 +25,7 @@ String prefGetUrl();
 
 String prefGetDataCube();
 String prefGetDayCube();
-void prefSetDataCube(String stringDataCube, String day);
+
+void prefSetAllCube(String stringDataCube, String day);
 
 #endif // PREFS_H

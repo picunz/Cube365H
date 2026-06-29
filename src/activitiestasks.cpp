@@ -7,7 +7,7 @@ void api_updateStateAndGetTasks(String deviceId, int cubeState)
 
   String jresult = sendState(deviceId, stateString);
 
-  Serial.println(jresult);
+  //Serial.println(jresult);
 
   convertJsonInTasksArray(jresult);
 }
@@ -15,11 +15,12 @@ void api_updateStateAndGetTasks(String deviceId, int cubeState)
 void api_GetTasks(String deviceId, int cubeState)
 {
   String jresult = getTasks(deviceId);
+
   convertJsonInTasksArray(jresult);
 }
 
 
-void api_updateStateAndGetActivities(String deviceId,int cubeState)
+void api_updateStateAndGetActivities(String deviceId, int cubeState)
 {
   String stateString = CubeStateStrings[cubeState];
   String jresult = sendState(deviceId, stateString);
@@ -54,11 +55,12 @@ void lcdDrawTask(String infoTask)
   String part1, part2;
   splitTask(infoTask, part1, part2);
 
-  //Serial.println("Part1: " + part1 + "  Part2: " + part2);
+  Serial.println("Part1: " + part1 + "  Part2: " + part2);
 
   lcdClearStr(3);
-  lcdClearStr(4);
   lcdDrawDbg(part1, 3);
+
+  lcdClearStr(4);
   lcdDrawDbg(part2, 4);
 }
 
@@ -74,7 +76,9 @@ void lcdDrawActivityTime(String activityTime)
   //lcdClearStr(3);
   lcdClearStr(4);
   //lcdDrawDbg(part1, 3);
-  lcdDrawDbg(part2, 4);
+
+  String info = part1 + " " + part2;
+  lcdDrawDbg(info, 4);
 }
 
 int getLevelByActivityPerc(int cubeState)
@@ -107,4 +111,13 @@ void lcdDrawFullStats(int i)
   lcdDrawDbg(time, 3);
 
   Serial.println(_activityArray[i]);
+}
+
+void showActivitiesArray()
+{
+  Serial.println("Activity List Array:");
+  for (int i = 0; i < 8; i++) {
+    Serial.print("Side: " + CubeStateStrings[i] + " Activity: " + _activityArray[i]);
+    Serial.println();
+  }
 }

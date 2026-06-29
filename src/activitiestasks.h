@@ -22,5 +22,8 @@ void lcdDrawActivityTime(String activityTime);
 int getLevelByActivityPerc(int cubeState);
 void lcdDrawFullStats(int i);
 
+// debug functions
+void showActivitiesArray();
+
 #endif  // ACTIVITIESTASKS_H
 

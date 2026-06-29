@@ -27,7 +27,7 @@ String registerDevice(String deviceId);
 
 //String getTasks(String deviceId); 
 
-
+String sendLog(String deviceId, String level, String message, float value = 0.0);
 
 
 #endif // WEBAPI_H

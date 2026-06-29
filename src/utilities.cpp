@@ -36,7 +36,7 @@ void initSensors()
    pinMode(PIN_SENSOR_F, INPUT);
    pinMode(PIN_SENSOR_B, INPUT);
    pinMode(PIN_SENSOR_T, INPUT);
-   pinMode(PIN_SENSOR_R, INPUT);
+   pinMode(PIN_SENSOR_R, INPUT_PULLDOWN);
    pinMode(PIN_SENSOR_0, INPUT);
 /*
    attachInterrupt(digitalPinToInterrupt(PIN_SENSOR_L), handleInterrupt, CHANGE);
@@ -46,58 +46,7 @@ void initSensors()
    attachInterrupt(digitalPinToInterrupt(PIN_SENSOR_R), handleInterrupt, CHANGE);
    attachInterrupt(digitalPinToInterrupt(PIN_SENSOR_0), handleInterrupt, CHANGE);
 */
-}
-
-void testSensors()
-{
-   Serial.println("testCNY70");
-
-   lcdClearStr(0); 
-   
-   while(1)
-   {
-      int digiL = digitalRead(PIN_SENSOR_L);
-      int digiF = digitalRead(PIN_SENSOR_F);
-      int digiB = digitalRead(PIN_SENSOR_B);
-      int digiT = digitalRead(PIN_SENSOR_T);
-      int digiR = digitalRead(PIN_SENSOR_R);
-      int digi0 = digitalRead(PIN_SENSOR_0);
-
-      SensorState s = getSensors(digiL, digiR, digiF, digiB, digi0, digiT);
-
-
-      lcdDot(s, 16);
-
-      //ledsFace(s);
-
-   
-      delay(50);
-   }
-}
-
-void testSensorsAnalog()
-{
-   Serial.println("testCNY70");
-
-   lcdClearStr(0); 
-   
-   while(1)
-   {
-      int digiL = analogRead(PIN_SENSOR_L);
-      int digiF = analogRead(PIN_SENSOR_F);
-      int digiB = analogRead(PIN_SENSOR_B);
-      int digiT = analogRead(PIN_SENSOR_T);
-      int digiR = analogRead(PIN_SENSOR_R);
-      //int digi0 = analogRead(PIN_SENSOR_0);
-
-      Serial.printf("L:%4d  F:%4d  B:%4d  T:%4d  R:%4d\n", 
-                    digiL, digiF, digiB, digiT, digiR);
-
-      //ledsFace(s);
-
-   
-      delay(100);
-   }
+   pinMode(PIN_SENSOR_RECHARGEBASE, INPUT);
 }
 
 SensorState getSensorValues(int sensorL, int sensorR, int sensorF, int sensorB, int sensorO, int sensorT)
@@ -214,7 +163,12 @@ void readSensors(bool debug = false)
                     " R:" + String(digiR) + 
                     " 0:" + String(digi0));
   }
+  
+   
 }
+ 
+
+   
 
 SensorState getSensors(int sensorL, int sensorR, int sensorF, int sensorB, int sensorO, int sensorT)
 {
@@ -361,23 +315,10 @@ int mapString2Enum(String side)
    }
 }
 
-
-// sensor recharge base
-void testSensorBase()
-{
-  pinMode(PIN_SENSOR_RECHARGEBASE, INPUT);
-  while(1)
-  {
-    int pin = digitalRead(PIN_SENSOR_RECHARGEBASE);
-    Serial.println(pin);
-    delay(50);
-  }
-}
-
-
+ 
 bool isCharging()
 {
-   pinMode(PIN_SENSOR_RECHARGEBASE, INPUT);
+   pinMode(PIN_SENSOR_RECHARGEBASE, INPUT_PULLDOWN);
 
    return (digitalRead(PIN_SENSOR_RECHARGEBASE) == HIGH);
 }
@@ -415,4 +356,139 @@ void buzzerOff()
 {
    noTone(PIN_BUZZER);
    digitalWrite(PIN_BUZZER, LOW);
+}
+
+
+// *** Logs section ***
+
+void log(String deviceId, String level, String message, float value)
+{
+   Serial.println(message);
+
+   if (WiFi.status() == WL_CONNECTED) {
+
+      sendLog(deviceId, level, message, value);
+   }
+}
+
+// *** Tests section ***
+
+
+
+void testSensors()
+{
+   Serial.println("testCNY70");
+
+   lcdClearStr(0); 
+   
+   while(1)
+   {
+      int digiL = digitalRead(PIN_SENSOR_L);
+      int digiF = digitalRead(PIN_SENSOR_F);
+      int digiB = digitalRead(PIN_SENSOR_B);
+      int digiT = digitalRead(PIN_SENSOR_T);
+      int digiR = digitalRead(PIN_SENSOR_R);
+      int digi0 = digitalRead(PIN_SENSOR_0);
+
+      SensorState s = getSensors(digiL, digiR, digiF, digiB, digi0, digiT);
+
+
+      lcdDot(s, 16);
+
+      //ledsFace(s);
+
+   
+      delay(50);
+   }
+}
+
+void testSensorsAnalog()
+{
+   Serial.println("testCNY70");
+
+   lcdClearStr(0); 
+   
+   while(1)
+   {
+      int digiL = analogRead(PIN_SENSOR_L);
+      int digiF = analogRead(PIN_SENSOR_F);
+      int digiB = analogRead(PIN_SENSOR_B);
+      int digiT = analogRead(PIN_SENSOR_T);
+      int digiR = analogRead(PIN_SENSOR_R);
+      //int digi0 = analogRead(PIN_SENSOR_0);
+
+      Serial.printf("L:%4d  F:%4d  B:%4d  T:%4d  R:%4d\n", 
+                    digiL, digiF, digiB, digiT, digiR);
+
+      //ledsFace(s);
+
+   
+      delay(100);
+   }
+}
+
+void testSensorsWithLeds()
+{
+   Serial.println("testCNY70 and neopixel leds");
+
+   initBuzzer();
+
+   lcdClearStr(0); 
+   
+   while(1)
+   {
+      int digiL = digitalRead(PIN_SENSOR_L);
+      int digiF = digitalRead(PIN_SENSOR_F);
+      int digiB = digitalRead(PIN_SENSOR_B);
+      int digiT = digitalRead(PIN_SENSOR_T);
+      int digiR = digitalRead(PIN_SENSOR_R);
+      int digi0 = digitalRead(PIN_SENSOR_0);
+
+      SensorState s = getSensors(digiL, digiR, digiF, digiB, digi0, digiT);
+
+
+      lcdDot(s, 16);
+
+      //ledsFace(s);
+
+      int cubeState = getCubeState(s);
+
+      setLevel(12, ColorFace[cubeState], false, 100);
+
+      if (cubeState == CubeState::NO_SIDE) {
+         buzzerTone(1000, 100);
+      }
+      else if (cubeState == CubeState::MULTIPLE_SIDE) {
+         buzzerTone(2000, 100);
+      }
+      else {
+         buzzerOff();
+      }      
+
+   
+      delay(50);
+   }
+}
+
+void testMagSensor()
+{
+  pinMode(PIN_SENSOR_RECHARGEBASE, INPUT_PULLDOWN);
+
+  lcdClearStr(0); 
+  lcdDrawDbg("Mag Sensor Test", 0);
+  while(1)
+  {
+    int pin = digitalRead(PIN_SENSOR_RECHARGEBASE);
+    if (pin == HIGH) {
+      Serial.println("Charging");
+      lcdDrawDbg("          ", 1);
+      lcdDrawDbg("Charging", 1);
+    }
+    else {
+      lcdDrawDbg("          ", 1);
+      lcdDrawDbg("Not Charging", 1);
+    }
+    Serial.println(pin);
+    delay(50);
+  }
 }

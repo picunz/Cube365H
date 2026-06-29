@@ -52,9 +52,7 @@ float readBatteryVoltage()
 
 void showBatteryVoltage(float voltage)
 {
-  Serial.print("Battery voltage: ");
-  Serial.print(voltage);
-  Serial.println(" V");
+
   printAt(String(voltage), 100, 30);
 }
 

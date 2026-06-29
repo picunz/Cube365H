@@ -45,11 +45,11 @@ void prefSetUrl(String url)
 
 String prefGetUrl()
 {
-    preferences.begin("cube-config", false); 
-    String url = preferences.getString("Url");
-    preferences.end();
+   preferences.begin("cube-config", false); 
+   String url = preferences.getString("Url");
+   preferences.end();
 
-    return url;
+   return url;
 }
 
 // data cube
@@ -73,7 +73,7 @@ String prefGetDayCube()
 }
  
 
-void prefSetDataCube(String stringDataCube, String day)
+void prefSetAllCube(String stringDataCube, String day)
 {
    preferences.begin("data-cube", false); 
    preferences.putString("dataCube", stringDataCube);

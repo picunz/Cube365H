@@ -22,14 +22,14 @@ uint32_t colors[PIXELS_LEN] = {
 
 uint32_t ColorFace[8] = {
 
-   COLOR_FACE_RED,    //LEFT
-   COLOR_FACE_BLUE,   //RIGHT = 1,
-   COLOR_FACE_YELLOW, //FRONT = 2,
-   COLOR_FACE_GREEN,  //BACK =  3,
-   COLOR_FACE_ORANGE, //BASE =  4,
-   COLOR_FACE_VIOLET, //TOP =   5,
-   COLOR_FACE_WHITE,  //MULTIPLE_SIDE = 6,
-   COLOR_FACE_WHITE  //NO_SIDE       = 7, 
+   COLOR_FACE_RED,      //LEFT =          0, 
+   COLOR_FACE_BLUE,     //RIGHT =         1,
+   COLOR_FACE_YELLOW,   //FRONT =         2,
+   COLOR_FACE_GREEN,    //BACK =          3,
+   COLOR_FACE_ORANGE,   //BASE =          4,
+   COLOR_FACE_VIOLET,   //TOP =           5,
+   COLOR_FACE_WHITE,    //MULTIPLE_SIDE = 6,
+   COLOR_FACE_WHITE     //NO_SIDE       = 7, 
 };
 
 String ColorFaceString[8] {
@@ -70,13 +70,17 @@ void setLevel(int nPixel)
    }
 }
 
-void setLevel(int nPixel, uint32_t color)
+void setLevel(int nPixel, uint32_t color, bool clearBefore, uint8_t brightness)
 {
    ringPixels.begin();
    ringPixels.show();
-   ringPixels.setBrightness(255);
+   ringPixels.setBrightness(brightness);
 
-   ringPixels.clear();
+   if (clearBefore) {
+      ringPixels.clear();
+   }
+
+   //ringPixels.clear();
 
    for(int i =0; i < nPixel; i++)
    {

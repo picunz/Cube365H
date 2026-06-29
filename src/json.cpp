@@ -69,26 +69,22 @@ void convertJsonInActivitiesArray(String jsonStr)
 
     DeserializationError error = deserializeJson(*jsonTasks, jsonStr);
 
-    Serial.println("Activity List:");
     JsonArray _taskList = (*jsonTasks)["jActivities"].as<JsonArray>();
     for (JsonObject obj : _taskList) {
         String side = obj["Side"];           
-        String perc = obj["Perc"]; 
+        String type = obj["Type"]; 
         //String type = obj["Type"];
         String time = obj["ElapsedTime"]; 
  
-        Serial.print(" Side: " + side);
-        Serial.print(" Perc: " + perc);
-        //Serial.print(" Type: " + type);
-        Serial.println(" Elapsed: " + time);
         
         int idx = mapString2Enum(side);
         
-        if (idx >= 0) {
-            _activityArray[idx] = perc + ":" + time;
-            //Serial.println(" _activityArray[idx] : " + _activityArray[idx]);
+        if (idx >= 0/* && type != "-"*/) {
+            _activityArray[idx] = type + ":" + time;
         }
+        
     }
+
 
 }
 

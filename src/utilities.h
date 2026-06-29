@@ -3,7 +3,8 @@
 
 #include <Arduino.h>
  
-
+#include "webapi.h"
+ 
 
 #define PIN_SENSOR_RECHARGEBASE 40
 
@@ -11,7 +12,7 @@
 #define PIN_SENSOR_F 4
 #define PIN_SENSOR_B 3
 #define PIN_SENSOR_T 5  
-#define PIN_SENSOR_R 1
+#define PIN_SENSOR_R 20
 
 #define PIN_SENSOR_0 26
 
@@ -67,8 +68,7 @@ extern int digiL, digiF, digiR, digiB, digiT, digi0;
 
 void initSensors();
 
-void testSensors();
-void testSensorsAnalog();
+
 
 // analog
 SensorState getSensorValues(int sensorL, int sensorR, int sensorF, int sensorB, int sensorO, int sensorT);
@@ -90,9 +90,6 @@ bool singleFaceActive(int state);
 
 bool topFacePressed(int state);
 
-// sensor recharge base
-
-void testSensorBase();
 
 bool isCharging();
 
@@ -109,5 +106,17 @@ void buzzerTone(int frequency, int duration);
 
 void buzzerOff();
 
+
+// logs
+
+void log(String deviceId, String level, String message, float value = 0.0);
+
+
+// tests 
+void testMagSensor();
+void testSensors();
+void testSensorsAnalog();
+
+void testSensorsWithLeds();
 
 #endif //UTILITIES_H
