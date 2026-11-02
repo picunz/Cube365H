@@ -19,6 +19,8 @@ void prefResetCredentials();
 void prefSetCredentials(String name, String pwd);
 NetworkCredentials prefGetCredentials();
 
+void changeCredentialMode(bool enable);
+bool isCredentialModeEnabled();
 
 void prefSetUrl(String url);
 String prefGetUrl();

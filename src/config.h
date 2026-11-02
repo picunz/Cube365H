@@ -6,8 +6,8 @@
 
 
 
-#define AP_SSID      "CUBE"
-#define AP_PASSWORD   "visiera16"
+#define AP_SSID      "CUBE365"
+#define AP_PASSWORD   "esp32cube"
 #define SERVER_PORT   88
 
 

@@ -54,11 +54,13 @@ int WiFi_scanner()
 {
    Serial.println("scan start");
 
-   WiFi.mode(WIFI_STA);
-   WiFi.disconnect(); // Disconnetti da eventuali reti precedenti
+    WiFi.mode(WIFI_AP_STA);
+    WiFi.disconnect(false, true);
+    WiFi.scanDelete();
 
    // WiFi.scanNetworks will return the number of networks found
    int n = WiFi.scanNetworks();
+    numberOfNetworkFound = n;
    Serial.println("scan done");
    if (n == 0)
    {
@@ -92,7 +94,7 @@ int WiFi_scanner()
 
 String processor(const String& var) 
 {
-   if (var == "WIFI_LIST") {
+    if (var == "WIFI_LIST") {
 
         String wifiList = "";
       
@@ -107,13 +109,18 @@ String processor(const String& var)
         }
 
         return wifiList; 
-   }
-   else if(var == "CUR_URL") {
+    }
+    else if (var == "CUR_NET") {
+
+        NetworkCredentials creds = prefGetCredentials();
+        return creds.ssid;
+    }
+    else if(var == "CUR_URL") {
 
         ServerUrl = prefGetUrl();
         return ServerUrl;
-   }
-   return String(); 
+    }
+    return String(); 
 }
 
 void notFound(AsyncWebServerRequest *request)
@@ -123,9 +130,13 @@ void notFound(AsyncWebServerRequest *request)
 
 void WiFi_accessPointSetup(String ssid, String pwd)
 {
+    WiFi.softAPdisconnect(true);
+    WiFi.disconnect(true, true);
+    delay(200);
 
-    WiFi.disconnect();
-    WiFi.mode(WIFI_AP);
+    WiFi.persistent(false);
+    WiFi.mode(WIFI_AP_STA);
+    WiFi.setSleep(false);
    
     IPAddress local_IP(192, 168, 4, 1);
 
@@ -135,14 +146,27 @@ void WiFi_accessPointSetup(String ssid, String pwd)
     //WiFi.enableIpV6(false);
     //WiFi.softAPsetHostname("MyCube");
 
-    WiFi.softAPConfig(local_IP, gateway, subnet);
+    bool configOk = WiFi.softAPConfig(local_IP, gateway, subnet);
+    Serial.println("WF: softAPConfig " + String(configOk ? "OK" : "FAIL"));
  
 
 
-    WiFi.softAP(ssid.c_str(), pwd.c_str());
+    bool apOk = WiFi.softAP(ssid.c_str(), pwd.c_str(), 1, 0, 4);
+    Serial.println("WF: softAP " + String(apOk ? "OK" : "FAIL"));
+
+    if (!apOk) {
+        Serial.println("WF: AP start failed, check SSID/password");
+        return;
+    }
+
     IPAddress IP = WiFi.softAPIP();
     Serial.print("WF: AP IP address ");
     Serial.println(IP.toString());
+    Serial.println("WF: AP SSID " + ssid);
+    Serial.println("WF: AP PWD len " + String(pwd.length()));
+
+    numberOfNetworkFound = WiFi_scanner();
+    Serial.println("WF: scanned networks " + String(numberOfNetworkFound));
  
  
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)

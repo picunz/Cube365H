@@ -85,6 +85,7 @@ int counter_recharge = 0;
 
 bool showInfoNet = false;
 bool configNet = false;
+bool waitingPressed = false;
 
 bool topFaceActive = false;
 bool chargingActive = false;
@@ -158,8 +159,9 @@ void setup()
 
   setWhiteLed(false);
 
- 
-   
+  
+  bool changeCredential = isCredentialModeEnabled();
+  Serial.println("ChangeCredential Mode:" + String(changeCredential));
 
   NetworkCredentials creds = prefGetCredentials();
 
@@ -170,21 +172,27 @@ void setup()
 
        
   bool noNetworkSaved = (creds.ssid.length() == 0);
-  if (noNetworkSaved) 
+  if (noNetworkSaved || changeCredential) 
   {
-    Serial.println("No nets saved");
+    Serial.println("Hotspot mode");
 
     lcdClearStr(0); 
-    lcdDrawDbg("No nets saved", 0);
-
     lcdClearStr(1); 
-    lcdDrawDbg("Hotspot mode", 1);
+
+    if (noNetworkSaved) {      
+      lcdDrawDbg("No nets saved", 0);
+      lcdDrawDbg("Hotspot mode", 1);
+    }
+    else if(changeCredential) {
+      lcdDrawDbg("Change net", 0);
+      lcdDrawDbg("Hotspot mode", 1);
+    }
 
     lcdClearStr(2);
-    lcdDrawDbg(String(AP_SSID), 2);
+    lcdDrawDbg("SID:" + String(AP_SSID), 2);
 
     lcdClearStr(3);
-    lcdDrawDbg(String(AP_PASSWORD), 3);
+    lcdDrawDbg("PWD:" + String(AP_PASSWORD), 3);
 
     hotSpotMode();
   }
@@ -399,13 +407,35 @@ void loop()
     // *** multiple side
     if (cubeState == CubeState::MULTIPLE_SIDE) {
       
+      
+      int numPressed = getNumberOfPressed(s);
+      if (numPressed > 2) {
+
+        if (!waitingPressed) { 
+        
+          waitingPressed = true;
+          prevMillis_waiting_presseds = millis();
+
+        }
+      }
+       
+    }
+
+    // *** check multiple pressed
+
+    if (waitingPressed && (millis() - prevMillis_waiting_presseds) > Milli_Waiting_Pressed) {
+      waitingPressed = false;
+
       int numPressed = getNumberOfPressed(s);
       if (numPressed == 3) {
 
-        if (!showInfoNet) {
+        
+        if (!showInfoNet) { 
         
           showInfoNet = true;
           prevMillis_periodic_step = millis();
+
+          Serial.println("Waiting for pressed faces");
 
           Serial.println("Draw Info");
 
@@ -428,15 +458,17 @@ void loop()
       }
       else if(numPressed == 4) {
 
-        lcdClearStr(3); 
-        lcdClearStr(4);
+       
         if (!configNet) {
 
           configNet = true;
           prevMillis_periodic_step = millis();
 
-          Serial.println("Reset net");
+          changeCredentialMode(true);
 
+          Serial.println("Reset net");
+          lcdClearStr(3); 
+          lcdClearStr(4);
           lcdDrawDbg("Press Reset to add a net", 3);
 
         }
@@ -444,28 +476,26 @@ void loop()
     }
 
     // *** timer end for multiple pressed
-
     if (showInfoNet && (millis() - prevMillis_periodic_step) > 3000) 
     {
-      
+      showInfoNet = false;
+
       Serial.println("Timer end for info net");
 
       String curTask = _taskArray[cubeState];
       lcdDrawTask(curTask);
-      
-      showInfoNet = false;
-
     }
 
-    if (configNet && (millis() - prevMillis_periodic_step) > 3000) 
+    if (configNet && (millis() - prevMillis_periodic_step) > 6000) 
     {
-      
+      configNet = false;
+
       Serial.println("Timer end for config net");
 
       String curTask = _taskArray[cubeState];
       lcdDrawTask(curTask);
       
-      configNet = false;
+      changeCredentialMode(false);
 
     }
 

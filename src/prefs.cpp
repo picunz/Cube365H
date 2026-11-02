@@ -24,15 +24,32 @@ void prefSetCredentials(String name, String pwd)
 
 NetworkCredentials prefGetCredentials()
 {
-    NetworkCredentials creds;
+   NetworkCredentials creds;
 
-    preferences.begin("cube-app", false); 
-    creds.ssid = preferences.getString("NetworkName");
-    creds.password = preferences.getString("NetworkPwd");
-    preferences.end();
+   preferences.begin("cube-app", false); 
+   creds.ssid = preferences.getString("NetworkName");
+   creds.password = preferences.getString("NetworkPwd");
+   preferences.end();
 
-    return creds;
+   return creds;
 }
+
+void changeCredentialMode(bool enable)
+{
+   preferences.begin("cube-app", false); 
+   preferences.putBool("ChgCredMode", enable);
+   preferences.end(); 
+}
+
+bool isCredentialModeEnabled()
+{
+   preferences.begin("cube-app", false); 
+   bool value = preferences.getBool("ChgCredMode", false);
+   preferences.end();
+
+   return value;
+}
+
 
 // configurations
 
