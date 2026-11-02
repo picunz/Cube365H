@@ -333,6 +333,21 @@ void setWhiteLed(bool val)
    digitalWrite(LED, val);
 }
 
+void adjustLcdOrientation(int state)
+{
+   if (MULTIPLE_SIDE == state || NO_SIDE == state) {
+      return;
+   }  
+   
+   lcdClear();
+   if (state == (int)CubeState::BACK) {
+      lcdFlipY(true);
+   }
+   else {
+      lcdFlipY(false);
+   }
+}
+
 // buzzer functions
 void initBuzzer()
 {
@@ -371,9 +386,44 @@ void log(String deviceId, String level, String message, float value)
    }
 }
 
+
+// *** WiFi Section ***
+
+
+void hotSpotMode()
+{
+   String mac = WiFI_getMac();
+   Serial.println(mac);
+
+   String last4Mac = mac.substring(mac.length() - 4);
+   String SSIDName= String(AP_SSID_PRFX) + last4Mac;
+   Serial.println("Hotspot mode: " + SSIDName);
+
+   lcdClearStr(2);
+   lcdDrawDbg("SID:" + SSIDName, 2);
+
+   lcdClearStr(3);
+   lcdDrawDbg("PWD:" + String(AP_PASSWORD), 3);
+    
+   WiFi_accessPointSetup(SSIDName, AP_PASSWORD);
+
+   String apUrl = WiFi.softAPIP().toString();
+   if (serverPort != 80) {
+      apUrl += ":" + String(serverPort);
+   }
+
+   Serial.print("AP IP Address: ");
+   Serial.println(apUrl);
+   lcdClearStr(5);
+   lcdDrawDbg(apUrl, 5);
+
+   while(1) {
+      WiFi_processAccessPoint();
+      delay(1);
+   }
+}
+
 // *** Tests section ***
-
-
 
 void testSensors()
 {
@@ -492,3 +542,4 @@ void testMagSensor()
     delay(50);
   }
 }
+

@@ -12,12 +12,12 @@ void api_updateStateAndGetTasks(String deviceId, int cubeState)
   convertJsonInTasksArray(jresult);
 }
 
-void api_GetTasks(String deviceId, int cubeState)
+/* void api_GetTasks(String deviceId, int cubeState)
 {
   String jresult = getTasks(deviceId);
 
   convertJsonInTasksArray(jresult);
-}
+} */
 
 
 void api_updateStateAndGetActivities(String deviceId, int cubeState)
@@ -83,12 +83,33 @@ void lcdDrawActivityTime(String activityTime)
 
 int getLevelByActivityPerc(int cubeState)
 {
-  String activity = _activityArray[cubeState];
-      
-  String perc, time;
-  splitTask(activity, perc, time);
-  
-  int level = map(perc.toInt(), 0, 100, 1, 12);
+   
+  int totalMinutes = 0;
+  for(int i = 0; i < 8; i++) {
+    Serial.println("Activity[" + String(i) + "]:" + _activityArray[i]);
+
+    String activity = _activityArray[i];
+    String type, time;
+    splitTask(activity, type, time);
+    if (type != "-") {
+      String hourStr = time.substring(0, time.indexOf(':'));
+      String minutesStr = time.substring(time.indexOf(':') + 1);
+      int minutes = hourStr.toInt() * 60 + minutesStr.toInt();
+      totalMinutes += minutes;
+    }
+  }
+
+  String curActivity = _activityArray[cubeState];
+  String ctype, ctime;
+  splitTask(curActivity, ctype, ctime);
+
+  String hourStr = ctime.substring(0, ctime.indexOf(':'));
+  String minutesStr = ctime.substring(ctime.indexOf(':') + 1);
+  int cMinutes = hourStr.toInt() * 60 + minutesStr.toInt();
+
+  int level = map(cMinutes, 0, totalMinutes, 1, 12);
+
+  Serial.println("minutes: " + String(cMinutes) + " / " + String(totalMinutes) + " level: " + String(level));  
 
   return level;
 }
@@ -99,15 +120,15 @@ void lcdDrawFullStats(int i)
   setLevel(level, ColorFace[i]);
 
   lcdClear();
-  lcdDrawDbg(ColorFaceString[i], 0);
+ 
 
-  String name, type, perc, time;
+  String name, type, time;
   splitTask(_taskArray[i], name, type);
 
   lcdDrawDbg(name, 1);
   lcdDrawDbg(type, 2);
 
-  splitTask(_activityArray[i], perc, time);
+  splitTask(_activityArray[i], type, time);
   lcdDrawDbg(time, 3);
 
   Serial.println(_activityArray[i]);

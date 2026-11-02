@@ -14,11 +14,16 @@ void prefResetCredentials()
    preferences.end(); 
 }
 
-void prefSetCredentials(String name, String pwd)
+void prefSetCredentials(String name, String pwd, int indexNetwork)
 {
    preferences.begin("cube-app", false); 
-   preferences.putString("NetworkName", name);
-   preferences.putString("NetworkPwd", pwd);
+   if (indexNetwork == 2) {
+       preferences.putString("NetworkName2", name);
+       preferences.putString("NetworkPwd2", pwd);
+   } else {
+       preferences.putString("NetworkName", name);
+       preferences.putString("NetworkPwd", pwd);
+   }
    preferences.end(); 
 }
 
@@ -29,6 +34,10 @@ NetworkCredentials prefGetCredentials()
    preferences.begin("cube-app", false); 
    creds.ssid = preferences.getString("NetworkName");
    creds.password = preferences.getString("NetworkPwd");
+
+   creds.ssid2 = preferences.getString("NetworkName2");
+   creds.password2 = preferences.getString("NetworkPwd2");
+
    preferences.end();
 
    return creds;

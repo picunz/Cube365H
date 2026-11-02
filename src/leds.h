@@ -11,20 +11,20 @@
 
  
 #define PIXELS_LEN  12
+#define PIN 48
 
 extern uint32_t ColorFace[8];
 
 
-#define COLOR_FACE_RED      ringPixels.Color(255, 0, 0)     //LEFT
-#define COLOR_FACE_BLUE     ringPixels.Color(0, 0, 255)     //RIGHT
-#define COLOR_FACE_YELLOW   ringPixels.Color(255, 216, 0)   //FRONT
-#define COLOR_FACE_GREEN    ringPixels.Color(0, 255, 0)     //BACK
-#define COLOR_FACE_ORANGE   ringPixels.Color(255, 100, 0)   //BASE
-#define COLOR_FACE_VIOLET   ringPixels.Color(200, 0, 255)   //TOP
-#define COLOR_FACE_WHITE    ringPixels.Color(255, 255, 255) //MULTIPLE_SIDE
-#define COLOR_FACE_WHITE    ringPixels.Color(255, 255, 255) //NO_SIDE
-
-extern String ColorFaceString[8];
+#define COLOR_FACE_RED      ringPixels.Color(255, 0, 0)     
+#define COLOR_FACE_BLUE     ringPixels.Color(0, 0, 255)     
+#define COLOR_FACE_YELLOW   ringPixels.Color(255, 216, 0)   
+#define COLOR_FACE_GREEN    ringPixels.Color(0, 255, 0)     
+#define COLOR_FACE_ORANGE   ringPixels.Color(255, 10, 10)   
+#define COLOR_FACE_VIOLET   ringPixels.Color(200, 0, 255)   
+#define COLOR_FACE_WHITE    ringPixels.Color(255, 255, 255) 
+#define COLOR_FACE_OFF      ringPixels.Color(0, 0, 0)
+ 
 
 extern Adafruit_NeoPixel ringPixels;
  

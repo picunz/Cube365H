@@ -1,8 +1,9 @@
 #include "leds.h"
 
 
+ 
 
-Adafruit_NeoPixel ringPixels;
+Adafruit_NeoPixel ringPixels(PIXELS_LEN, PIN, NEO_GRB + NEO_KHZ800);
  
 
 uint32_t colors[PIXELS_LEN] = {
@@ -22,41 +23,41 @@ uint32_t colors[PIXELS_LEN] = {
 
 uint32_t ColorFace[8] = {
 
-   COLOR_FACE_RED,      //LEFT =          0, 
+   COLOR_FACE_YELLOW,   //LEFT =          0, 
    COLOR_FACE_BLUE,     //RIGHT =         1,
-   COLOR_FACE_YELLOW,   //FRONT =         2,
+   COLOR_FACE_ORANGE,   //FRONT =         2,
    COLOR_FACE_GREEN,    //BACK =          3,
-   COLOR_FACE_ORANGE,   //BASE =          4,
-   COLOR_FACE_VIOLET,   //TOP =           5,
+   COLOR_FACE_OFF,      //BASE =          4,
+   COLOR_FACE_OFF,      //TOP =           5,
    COLOR_FACE_WHITE,    //MULTIPLE_SIDE = 6,
    COLOR_FACE_WHITE     //NO_SIDE       = 7, 
 };
 
-String ColorFaceString[8] {
-   "Red",
-   "Blue",
-   "Yellow",
-   "Green",
-   "Orange",
-   "Violet",
-   "White",
-   "White"
-};
+ 
 
 void initLeds()
 {
+/*   
   ringPixels.updateType(NEO_GRB + NEO_KHZ800);
   ringPixels.updateLength(12);
   ringPixels.setPin(48);
   ringPixels.begin();
   ringPixels.show();   
+*/
+  ringPixels.begin();
+   
+
+  ringPixels.clear();
+ 
+  ringPixels.show();
 }
 
 void setLevel(int nPixel)
 {
    ringPixels.begin();
-   ringPixels.show();
    ringPixels.setBrightness(255);
+   ringPixels.show();
+   
 
    ringPixels.clear();
 

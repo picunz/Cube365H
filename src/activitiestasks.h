@@ -10,7 +10,7 @@
 #include "leds.h"
 
 void api_updateStateAndGetTasks(String deviceId, int cubeState);
-void api_GetTasks(String deviceId, int cubeState);
+//void api_GetTasks(String deviceId, int cubeState);
 
 void api_updateStateAndGetActivities(String deviceId,int cubeState);
 void api_GetActivities(String deviceId);

@@ -12,11 +12,13 @@ extern Preferences preferences;
 struct NetworkCredentials {
     String ssid;
     String password;
+    String ssid2;
+    String password2;
 };
 
 
 void prefResetCredentials();
-void prefSetCredentials(String name, String pwd);
+void prefSetCredentials(String name, String pwd, int indexNetwork = 1); 
 NetworkCredentials prefGetCredentials();
 
 void changeCredentialMode(bool enable);

@@ -2,6 +2,7 @@
 
 //#include <Arduino.h>
 #include <WiFi.h>
+#include <DNSServer.h>
 
 #include <AsyncTCP.h>
 
@@ -24,30 +25,57 @@ int numberOfNetworkFound;
 String webAPIUrl;
 
 int serverPort;
-AsyncWebServer server(SERVER_PORT);
+AsyncWebServer *server = nullptr;
+DNSServer dnsServer;
+IPAddress accessPointIp;
+bool accessPointPortalActive = false;
+
+bool serverStarted = false;
 
 
 AsyncWebSocket ws("/ws");
  
 
-
-//const char *PARAM_1 = "SSID";
+ 
 const char *PARAM_1 = "NET";
 const char *PARAM_2 = "Password";
-//const char *PARAM_3 = "Net";
 
-//const String inputParam1 = "SSID";
-const String inputParam1 = "NET";
-const String inputParam2 = "Password";
+const char *PARAM_3 = "NET2";
+const char *PARAM_4 = "Password2";
+ 
+//const String inputParam1 = "NET";
+//const String inputParam2 = "Password";
 
 String inputNetworkName;
 String inputNetworkPwd;
+String inputNetworkName2;
+String inputNetworkPwd2;
 //String inputNetworkName2;
 
 
 // configurations
 String inputUrl;
 const char *PARAM_URL = "Url";
+
+static void sendCaptivePortalRedirect(AsyncWebServerRequest *request)
+{
+    request->redirect("http://" + accessPointIp.toString() + "/");
+}
+
+static void resetWebServer(int port)
+{
+    if (server != nullptr)
+    {
+        server->end();
+        delete server;
+
+        server = nullptr;
+        serverStarted = false;
+    }
+
+    serverPort = port;
+    server = new AsyncWebServer(serverPort);
+}
  
 
 int WiFi_scanner()
@@ -125,11 +153,20 @@ String processor(const String& var)
 
 void notFound(AsyncWebServerRequest *request)
 {
-   request->send(404, "text/plain", "Not found");
+    if (accessPointPortalActive) {
+        sendCaptivePortalRedirect(request);
+        return;
+    }
+
+    request->send(404, "text/plain", "Not found");
 }
 
 void WiFi_accessPointSetup(String ssid, String pwd)
 {
+    resetWebServer(80);
+    dnsServer.stop();
+    accessPointPortalActive = false;
+
     WiFi.softAPdisconnect(true);
     WiFi.disconnect(true, true);
     delay(200);
@@ -160,6 +197,7 @@ void WiFi_accessPointSetup(String ssid, String pwd)
     }
 
     IPAddress IP = WiFi.softAPIP();
+    accessPointIp = IP;
     Serial.print("WF: AP IP address ");
     Serial.println(IP.toString());
     Serial.println("WF: AP SSID " + ssid);
@@ -167,19 +205,54 @@ void WiFi_accessPointSetup(String ssid, String pwd)
 
     numberOfNetworkFound = WiFi_scanner();
     Serial.println("WF: scanned networks " + String(numberOfNetworkFound));
+
+    dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
+    dnsServer.start(53, "*", accessPointIp);
+    accessPointPortalActive = true;
  
  
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+    server->on("/", HTTP_GET, [](AsyncWebServerRequest *request)
     {
         Serial.println("WF: start");
         request->send_P(200, "text/html", index_selectNetwork, processor); 
     });
 
+    server->on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *request)
+    {
+        Serial.println("generate_204 requested by client");
+        sendCaptivePortalRedirect(request);
+    });
+
+    server->on("/hotspot-detect.html", HTTP_GET, [](AsyncWebServerRequest *request)
+    {
+        Serial.println("hotspot-detect.html requested by client");
+        sendCaptivePortalRedirect(request);
+    });
+
+    server->on("/connecttest.txt", HTTP_GET, [](AsyncWebServerRequest *request)
+    {
+        Serial.println("connecttest.txt requested by client");
+        sendCaptivePortalRedirect(request);
+    });
+
+    server->on("/ncsi.txt", HTTP_GET, [](AsyncWebServerRequest *request)
+    {
+        Serial.println("ncsi requested by client");
+        sendCaptivePortalRedirect(request);
+    });
+
+    server->on("/redirect", HTTP_GET, [](AsyncWebServerRequest *request)
+    {
+        Serial.println("redirect requested by client");
+        sendCaptivePortalRedirect(request);
+    });
+
     // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
-    server.on("/getWifi", HTTP_GET, [](AsyncWebServerRequest *request)
+    server->on("/getWifi", HTTP_GET, [](AsyncWebServerRequest *request)
     {
         Serial.println("WF: init submit");
 
+        // network 1
         if (request->getParam(PARAM_1)->value() != "") 
         {
             inputNetworkName = request->getParam(PARAM_1)->value();
@@ -188,8 +261,7 @@ void WiFi_accessPointSetup(String ssid, String pwd)
         {
             inputNetworkName = "none";
         }
-
-        Serial.println("WF: " + inputNetworkName);
+ 
         
         if (request->getParam(PARAM_2)->value() != "") 
         {
@@ -200,78 +272,127 @@ void WiFi_accessPointSetup(String ssid, String pwd)
             inputNetworkPwd = "none";
         }
 
-       /*  if (request->getParam(PARAM_3)->value() != "") 
+        // network 2
+        if (request->getParam(PARAM_3)->value() != "") 
         {
             inputNetworkName2 = request->getParam(PARAM_3)->value();
         }
         else 
         {
             inputNetworkName2 = "none";
-        } */
-
-        
-        
+        }
+ 
+        if (request->getParam(PARAM_4)->value() != "") 
+        {
+            inputNetworkPwd2 = request->getParam(PARAM_4)->value();
+        }
+        else 
+        {
+            inputNetworkPwd2 = "none";
+        }
 
         String newNetwork = inputNetworkName + "," + inputNetworkPwd + "\n";
+        String newNetwork2 = inputNetworkName2 + "," + inputNetworkPwd2 + "\n";
 
-        Serial.println("WF: " + newNetwork);
+        Serial.println("WF1: " + newNetwork);
+        Serial.println("WF2: " + newNetwork2);
         
         Serial.println("WF: submit");
 
         prefSetCredentials(inputNetworkName, inputNetworkPwd);
 
+        prefSetCredentials(inputNetworkName2, inputNetworkPwd2, 2);
+
+        changeCredentialMode(false);
+        dnsServer.stop();
+        accessPointPortalActive = false;
       
-        server.end();
+        server->end();
 
         // reset
         ESP.restart();
 
     });
+ 
 
-    server.onNotFound(notFound);
+    server->onNotFound(notFound);
 
-    server.begin();
+    server->begin();
 
-    Serial.println("WF: server begin");
+    Serial.println("WF: server begin on port " + String(serverPort));
 }
 
-bool WiFi_connectToAccessPoint(String ssid, String pwd)
+void WiFi_processAccessPoint()
 {
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, pwd);
-
-    // Wait for connection
-    int attempts = 10;
-    while (WiFi.status() != WL_CONNECTED)
-    {
-        delay(800);
-        Serial.print(".");
-        if (attempts-- == 0)
-        {
-            Serial.println("-");
-            return false;
-        }
+    if (accessPointPortalActive) {
+        dnsServer.processNextRequest();
     }
-    Serial.println("OK");
-    return true;
+}
+
+bool WiFi_connectToAccessPoint(String ssid, String pwd, String ssid2, String pwd2)
+{
+     WiFi.mode(WIFI_STA);
+
+    for (int net = 0; net < 2; net++)
+    {
+        String currentSSID = (net == 0) ? ssid : ssid2;
+        String currentPWD  = (net == 0) ? pwd  : pwd2;
+
+        if (currentSSID.length() == 0) {
+            continue; // Skip if SSID is empty
+        }
+        
+        Serial.println("Trying to connect to: " + currentSSID);
+
+        WiFi.begin(currentSSID, currentPWD);
+
+        int attempts = 10;
+
+        while (WiFi.status() != WL_CONNECTED && attempts > 0)
+        {
+            delay(800);
+            Serial.print(".");
+            attempts--;
+        }
+
+        if (WiFi.status() == WL_CONNECTED)
+        {
+            Serial.println("\nConnected to " + currentSSID);
+            return true;
+        }
+
+        Serial.println("\nFailed.");
+        WiFi.disconnect();
+    }
+
+
+    return false;
 }
 
 String WiFi_startWebServer()
 {
-    server.addHandler(&ws);
-    server.begin();
-    int c = ws.count();   
+    if (serverStarted) {
+        Serial.println("WF: server already started");
+        return WiFi.localIP().toString() + ":" + String(serverPort);
+    }
+
+    resetWebServer(SERVER_PORT);
+    dnsServer.stop();
+    accessPointPortalActive = false;
+
+
+    server->addHandler(&ws);
 
     String localIp = "";
     
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+    server->on("/", HTTP_GET, [](AsyncWebServerRequest *request)
     {
         Serial.println("WF: server on");
         
         request->send_P(200, "text/html", index_page, processor);      
     });
 
-    server.on("/setUrl", HTTP_GET, [](AsyncWebServerRequest *request)
+    server->on("/setUrl", HTTP_GET, [](AsyncWebServerRequest *request)
     {
         Serial.println("WF: set url");
         
@@ -290,7 +411,9 @@ String WiFi_startWebServer()
         request->send_P(200, "text/html", index_page, processor);      
     });
     
-    server.begin();
+    server->begin();
+
+    serverStarted = true;
 
     String ipAddress = WiFi.localIP().toString() + ":" + String(SERVER_PORT);
 

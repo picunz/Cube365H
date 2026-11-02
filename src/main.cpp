@@ -22,9 +22,38 @@
 
 #include "activitiestasks.h"
 
+#include "pomodorotimer.h"
+
 //#include <Adafruit_NeoPixel.h>
 
 
+
+TaskHandle_t loadingTask = nullptr;
+volatile bool loading = true;
+
+void loadingAnimation(void *parameter)
+{
+    int dots = 0;
+
+    while (loading)
+    {
+        String s = "";
+
+        for (int i = 0; i < dots; i++) {
+            s += "-";
+        }
+        lcdClearStr(3);
+        lcdDrawDbg(s, 3, 5); 
+        // Aggiorna il display
+        
+        dots = (dots + 1) % 20; // Incrementa il numero di punti e resetta a 0 dopo 3
+        //delay(400); // Attendi 400 millisecondi
+
+        vTaskDelay(pdMS_TO_TICKS(400));
+    }
+
+    vTaskDelete(NULL);
+}
 
 
 #define BOOT_BUTTON_PIN 0 // GPIO collegato al pulsante BOOT
@@ -45,6 +74,9 @@ unsigned long prevMillis_periodic_chr = 0;
 unsigned long prevMillis_periodic_battery = 0;
 unsigned long prevMillis_periodic_update = 0;
 unsigned long prevMillis_periodic_step = 0;
+unsigned long prevMillis_periodic_tomato = 0;
+
+unsigned long prevMillis_waiting_longpress_top_face = 0;
 
 unsigned long prevMillis_waiting_presseds = 0;
 
@@ -57,6 +89,8 @@ int Milli_Periodic_CheckCharging = 1000;  // 1 sec
 int Milli_Periodic_Battery = 12000;       // 12 sec
 
 int Milli_Waiting_Pressed = 300;  // 300 msec
+
+int Milli_Periodic_Tomato = 5000;
 
 
 String _mac = "";
@@ -89,26 +123,11 @@ bool waitingPressed = false;
 
 bool topFaceActive = false;
 bool chargingActive = false;
+
+bool longPressTopFace = false;
  
 
-void hotSpotMode()
-{
- 
-
-  WiFi_accessPointSetup(AP_SSID, AP_PASSWORD);
-
-
-
-
-  String apUrl = WiFi.softAPIP().toString() + ":" + String(SERVER_PORT);
-  Serial.print("AP IP Address: ");
-  Serial.println(apUrl);
-  lcdClearStr(5);
-  lcdDrawDbg(apUrl, 5);
-
-  while(1);
-}
-
+PomodoroTimer pomodoro;
   
 void setup() 
 {
@@ -125,22 +144,39 @@ void setup()
 
   initLeds();
 
-  
+   
+  initWhiteLed();
+  setWhiteLed(false);
+
+  initSensors();
+  delay(200);
+  readSensors(true);
+  SensorState s = getSensors(digiL, digiR, digiF, digiB, digi0, digiT);
+  prevState = getCubeState(s);
+
+  prevFace = prevState;
+
+ 
+  Serial.println("Initial state: " + CubeStateStrings[prevState]);
+   
   lcdInit();
   delay(100);
 
+  Serial.println("Initial prevState: " + String(prevState));
+  adjustLcdOrientation(prevState);
 
+  
   lcdClearStr(0); 
   lcdDrawDbg("CUBE 365", 0, 40);
-
+ 
 
   initBattery();
+ 
+  setLevel(12, ColorFace[prevState]);
+ 
 
   initBuzzer();
   buzzerTone(1000, 1500);
-
-  initSensors();
-
 
   //testLeds();
  
@@ -153,11 +189,8 @@ void setup()
   //testSensorsAnalog();
 
   //testMagSensor();
-  
 
-  initWhiteLed();
 
-  setWhiteLed(false);
 
   
   bool changeCredential = isCredentialModeEnabled();
@@ -169,6 +202,9 @@ void setup()
 
   Serial.println("networkName:" + creds.ssid);
   Serial.println("NetworkPwd:" + creds.password);
+
+  Serial.println("networkName2:" + creds.ssid2);
+  Serial.println("NetworkPwd2:" + creds.password2);
 
        
   bool noNetworkSaved = (creds.ssid.length() == 0);
@@ -188,28 +224,28 @@ void setup()
       lcdDrawDbg("Hotspot mode", 1);
     }
 
-    lcdClearStr(2);
-    lcdDrawDbg("SID:" + String(AP_SSID), 2);
-
-    lcdClearStr(3);
-    lcdDrawDbg("PWD:" + String(AP_PASSWORD), 3);
-
+    
     hotSpotMode();
   }
   else 
   {
-    
-    bool connected = WiFi_connectToAccessPoint(creds.ssid, creds.password);
+   
+    xTaskCreate(loadingAnimation, "Loading", 2048, NULL, 1, &loadingTask);
+
+    bool connected = WiFi_connectToAccessPoint(creds.ssid, creds.password, creds.ssid2, creds.password2);
+
+    loading = false;
+    lcdClearStr(3);
+    vTaskDelay(pdMS_TO_TICKS(100)); // todo remove
 
     if(connected)
     {
       _ApConnected = true;
-
-      //lcdDrawDbg("Connected", 3);
+ 
 
       drawIcon(10, 20, ICON_WIFI);
 
-      //drawIconBattery(112, 20, 0);
+      
 
 
       _batteryVolt = readBatteryVoltage();
@@ -219,23 +255,18 @@ void setup()
       int level = map(_batteryVolt, 0, 4.5, 0, 6);
       drawIconBattery(112, 20, level);
       
-
-/*
-      // get ip and show it
-      String ipAddress = WiFi_startWebServer();
-      lcdClearStr(3); 
-      lcdDrawDbg("Ip:  " + ipAddress, 3);
-
-      
-      
-*/
+ 
       _mac = WiFI_getMac();
       
       lcdClearStr(5); 
       lcdDrawDbg("Mac: " + _mac, 4);
+
+      Serial.println("DeviceId:" + _mac);
      
       // debug
       String url = prefGetUrl();
+      Serial.println("Host Url from pref:" + url);
+
       ServerUrl = (url == "") ? "http://localhost:8080/" : url;
 
       ServerUrl = "https://www.kiand.it/cube365/";
@@ -261,9 +292,8 @@ void setup()
       Serial.println("response:" + response);
       */
 
-      SensorState s = getSensors(digiL, digiR, digiF, digiB, digi0, digiT);
-      int state = getCubeState(s);
-      api_updateStateAndGetTasks(_mac, state);
+     
+      api_updateStateAndGetTasks(_mac, prevState);
 
       initNtp();
 
@@ -287,6 +317,11 @@ void setup()
       Serial.println("convert string dataCube in jsonCube");
         
       deserializeJson(jsonCube, strDataCube);
+
+      cubeState = getCubeState(s);
+      String curTask = _taskArray[cubeState];
+      lcdDrawTask(curTask);
+      
     }
     else // not connected
     {
@@ -295,10 +330,13 @@ void setup()
       lcdClearStr(3); 
       lcdDrawDbg("No hotspot found", 3);
       delay(2000);
+
+      hotSpotMode();
+      while(1);
     }
   }
 
-   
+  Serial.println("end setup");
 }
 
 
@@ -306,7 +344,34 @@ void loop()
 {
   unsigned long mill = millis();
 
+  pomodoro.update();
+
+  // *** periodic pomodoro timer update
+  if ( (millis() - prevMillis_periodic_tomato) > Milli_Periodic_Tomato) 
+  {
+    prevMillis_periodic_tomato = mill;
+
+    PomodoroTimer::State s = pomodoro.state();
+
+    if (s != PomodoroTimer::Idle) {
+       
+      int dots = pomodoro.progressDots(12);
+      lcdTomatoDots(dots, 56);
+
+      lcdClearStr(4);
+      //lcdDrawDbg("Pomodoro state: "/* + pomodoro.remainingSeconds()*/, 4);
+
+      String remainingTime = String(pomodoro.remainingSeconds()/60) + ":" + String(pomodoro.remainingSeconds()%60);
+      lcdDrawDbg(remainingTime, 4);
+
+      Serial.println("Pomodoro state: " + String(s) + "  Dots:" + String(dots));
+    }
+  }
+
+   
+
   // *** periodic update for state and tasks
+  
   if ( (millis() - prevMillis_periodic_update) > Milli_Periodic_Update) 
   {
     prevMillis_periodic_update = mill;
@@ -314,18 +379,20 @@ void loop()
     Serial.println("Periodic_Update:" + String(CubeStateStrings[prevState]));
 
     api_updateStateAndGetTasks(_mac, cubeState);
-  
   }
-
+  
   // *** periodic update for battery
-  if ( (millis() - prevMillis_periodic_battery) > Milli_Periodic_Battery) 
+  
+  if ( (millis() - prevMillis_periodic_battery) > Milli_Periodic_Battery)
   {
     prevMillis_periodic_battery = mill;
+
+    Serial.print("Periodic_Battery: ");
 
     _batteryVolt = readBatteryVoltage();
     showBatteryVoltage(_batteryVolt);
 
-    Serial.print("Periodic_Battery " + String(_batteryVolt) + " V");
+    Serial.println(String(_batteryVolt) + " V");
   
 
     int level = map(_batteryVolt, 0, 4.5, 0, 6);
@@ -363,6 +430,7 @@ void loop()
 
   // *** periodic check
   if ( (millis() - prevMillis_periodic_up) > Milli_Periodic_Check)
+  //if (false)
   {
     prevMillis_periodic_up = mill;
  
@@ -372,7 +440,10 @@ void loop()
  
     SensorState s = getSensors(digiL, digiR, digiF, digiB, digi0, digiT);
       
-    lcdDot(s, 56);
+    if (!pomodoro.isRunning()) {
+      lcdDot(s, 56);
+    }
+     
 
     cubeState = getCubeState(s);
     
@@ -393,7 +464,7 @@ void loop()
 
         //setLevel(6, ColorFace[cubeState]);
 
-        api_GetActivities(_mac);
+        api_GetActivities(_mac);//todo remove
 
         
         lcdDrawFullStats(indexdStatPart % 6);
@@ -435,7 +506,7 @@ void loop()
           showInfoNet = true;
           prevMillis_periodic_step = millis();
 
-          Serial.println("Waiting for pressed faces");
+           
 
           Serial.println("Draw Info");
 
@@ -443,6 +514,8 @@ void loop()
           lcdClearStr(4); 
           if (_ApConnected) {
             // get ip and show it
+
+            Serial.println("WiFi_startWebServer");
             String ipAddress = WiFi_startWebServer();
             lcdDrawDbg("Ip:  " + ipAddress, 3);
 
@@ -520,11 +593,19 @@ void loop()
 
       Serial.println("Top face " + CubeStateStrings[prevState]);
 
+      if (!longPressTopFace) { 
+        
+          longPressTopFace = true;
+          prevMillis_waiting_longpress_top_face = millis();
+
+          Serial.println("Waiting for long press top face");
+      }
+
       //Serial.println("prevState:" + String(prevState) + "  cubeState:" + String(cubeState));
 
       api_updateStateAndGetActivities(_mac, prevState);
 
-      
+
       showActivitiesArray();
        
       // light
@@ -533,39 +614,86 @@ void loop()
 
       buzzerTone(2000, 100);
 
-      api_GetActivities(_mac);
+      api_GetActivities(_mac); // todo remove
 
       String curActivity = _activityArray[prevState];
       Serial.println("curActivity:" + String(curActivity));
 
       lcdDrawActivityTime(curActivity);
+ 
+      
+
+
+      log(_mac, "INFO", "Current activity: " + curActivity, 0.0);
+    }
+    
+
+    if (longPressTopFace && (millis() - prevMillis_waiting_longpress_top_face) > 3000) 
+    {
+      longPressTopFace = false;
+ 
+      Serial.println("prevFace:" + String(prevFace) + "  cubeFace:" + String(cubeFace));
+      
+      readSensors(true);
+      bool topPressed = topFacePressed(prevFace);
+      Serial.println("Top face pressed:" + String(topPressed));
+      if (topPressed) {
+
+        Serial.println("Timer end for long press top face");
+        buzzerTone(2000, 400);
+
+        if (pomodoro.isRunning()) {
+          Serial.println("Stop pomodoro timer");
+          pomodoro.stop();
+        }
+        else {
+          Serial.println("Start pomodoro timer");
+          pomodoro.begin(25, 5, 15, 4);
+          pomodoro.start();
+
+          drawIconTomato(10, 20);
+ 
+        }
+        lcdClearStr(5);
+         
+      }
 
       
-      log(_mac, "INFO", "Current activity: " + curActivity, 0.0);
+ 
     }
 
     // *** change side
     if (prevFace != cubeFace && singleFaceActive(cubeFace)) {
-
-      //Serial.println("Change to " + CubeStateStrings[cubeState] + "From " + CubeStateStrings[prevState]);
+      Serial.println("Change side");
       
-      log(_mac, "INFO", "Change from " + CubeStateStrings[prevFace] + " to " + CubeStateStrings[cubeFace], 0.0);
+      int level = getLevelByActivityPerc(cubeState);
+      
+      if (cubeState == CubeState::TOP || cubeState == CubeState::BASE) {
+        level = 12;
+      }
+      setLevel(level, ColorFace[cubeState]);
+
+      adjustLcdOrientation(cubeFace);
+      lcdClearStr(0); 
+      lcdDrawDbg("CUBE 365", 0, 40);
 
       api_updateStateAndGetActivities(_mac, cubeState);
 
       //buzzerTone(1000, 100);
 
       counter_up = 0;
+ 
 
-      // get perc
-      int level = getLevelByActivityPerc(cubeState);
-      
-      setLevel(level, ColorFace[cubeState]);
+     
+        
       
       String curTask = _taskArray[cubeState];
       lcdDrawTask(curTask);
       
       Serial.println("curTask:" + String(curTask));
+
+      log(_mac, "INFO", "Change from " + CubeStateStrings[prevFace] + " to " + CubeStateStrings[cubeFace], 0.0);
+
 
       if (curTask == "-") {
 
@@ -578,17 +706,12 @@ void loop()
         buzzerTone(0, 500);
         buzzerTone(500, 1000);
       }
-
-      
-
-
+        
     }
 
-    
-
+   
     prevState = cubeState;
     prevFace = cubeFace;
-
   }
 
   

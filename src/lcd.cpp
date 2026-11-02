@@ -13,11 +13,20 @@ void lcdInit()
 {
    Wire.begin(17, 18); // SDA, SCL
 
-    u8g2.begin();
+   u8g2.begin();
 
-    //u8g2.setContrast(150); 
+   //u8g2.setContrast(150); 
 
-    u8g2.clear();
+   u8g2.clear();
+}
+
+void lcdFlipY(bool enable)
+{
+   if (enable) {
+      u8g2.setDisplayRotation(U8G2_R2);
+   } else {
+      u8g2.setDisplayRotation(U8G2_R0);
+   }
 }
 
 void lcdClear()
@@ -74,6 +83,11 @@ void drawIconBattery(int x, int y, int level)
    u8g2.sendBuffer();
 }
 
+void drawIconTomato(int x, int y)
+{
+   u8g2.drawXBMP(x, y, tomato_width, tomato_height, tomato_bits);
+   u8g2.sendBuffer();
+}
 
 void printAt(const String& str, int x, int y)
 {
@@ -162,5 +176,23 @@ void lcdDot(SensorState s, int y)
    else if (s.releasedT) {
       lcdEmptyDot(112, y, 3);
    }
+   u8g2.sendBuffer();    
+}
+
+void lcdTomatoDots(int dots, int y)
+{
+
+   for(int i = 0; i < 10; i++)
+   {
+      u8g2.drawCircle(5 + i*12, y, 4);
+   }
+
+   for(int i = 0; i < 10; i++)
+   {
+      if (i < dots) {
+         u8g2.drawDisc(5 + i*12, y, 4);
+      }
+   }
+ 
    u8g2.sendBuffer();    
 }

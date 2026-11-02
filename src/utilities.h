@@ -4,6 +4,8 @@
 #include <Arduino.h>
  
 #include "webapi.h"
+#include "config.h"
+#include "wifiControl.h"
  
 
 #define PIN_SENSOR_RECHARGEBASE 40
@@ -97,6 +99,8 @@ void initWhiteLed();
 
 void setWhiteLed(bool val);
 
+void adjustLcdOrientation(int state);
+
 // buzzer functions
 void initBuzzer();
 
@@ -111,6 +115,9 @@ void buzzerOff();
 
 void log(String deviceId, String level, String message, float value = 0.0);
 
+// wifi
+
+void hotSpotMode();
 
 // tests 
 void testMagSensor();
